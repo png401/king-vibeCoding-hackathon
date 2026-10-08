@@ -20,6 +20,10 @@
   #app {
     width: min(480px, 92vw);
     text-align: center;
+    transition: width 0.2s;
+  }
+  #app.wide {
+    width: min(760px, 95vw);
   }
 
   .screen { display: none; flex-direction: column; align-items: center; gap: 14px; }
@@ -76,18 +80,57 @@
     padding: 0 4px;
   }
 
-  #taunt-banner {
-    display: none;
-    width: min(480px, 92vw);
-    background: #22223b;
-    color: #ffd60a;
-    border-radius: 10px;
-    padding: 8px 14px;
-    font-size: 0.88rem;
-    font-weight: bold;
-    min-height: 1.4em;
+  #game-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    align-items: flex-start;
   }
-  #taunt-banner.show { display: block; }
+
+  #type-panel {
+    display: none;
+    width: min(240px, 92vw);
+    background: #22223b;
+    border-radius: 14px;
+    padding: 14px;
+    text-align: left;
+    color: white;
+  }
+  #type-panel.show { display: block; }
+
+  #type-panel .panel-title {
+    font-size: 0.82rem;
+    opacity: 0.75;
+    margin: 0 0 8px;
+  }
+
+  #type-phrase {
+    font-size: 1.05rem;
+    font-weight: bold;
+    line-height: 1.5;
+    min-height: 3.2em;
+    margin-bottom: 10px;
+  }
+  #type-phrase .done { color: #90e0a8; }
+  #type-phrase .bad { color: #ff6b6b; text-decoration: underline; }
+
+  #type-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: none;
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+
+  #type-bonus {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: #ffd60a;
+    font-weight: bold;
+  }
 
   #game-area {
     position: relative;
@@ -166,6 +209,7 @@
       <p><strong>조작</strong>: ← → (또는 A / D) 키로 좌우 이동</p>
       <p><strong>목표</strong>: 쏟아지는 출근길 장애물을 피해 최대한 오래 생존하기</p>
       <p>시간이 지날수록 장애물이 더 빠르고 많아져요. 민첩하게!</p>
+      <p>하드모드를 켜면 옆에 <strong>타이핑 챌린지</strong>가 떠요. 피하면서 문장도 같이 치면 보너스 점수!</p>
     </div>
     <button id="btn-start" class="btn-primary">출근 시작!</button>
     <button id="btn-hard" class="btn-secondary">너무 쉬워요 😏</button>
@@ -176,15 +220,23 @@
       <span id="hud-time">0.0초</span>
       <span id="hud-level">난이도 1</span>
     </div>
-    <div id="taunt-banner"></div>
-    <div id="game-area">
-      <div id="player">🏃</div>
+    <div id="game-row">
+      <div id="game-area">
+        <div id="player">🏃</div>
+      </div>
+      <div id="type-panel">
+        <p class="panel-title">⌨️ 타이핑 챌린지 (보너스!)</p>
+        <div id="type-phrase"></div>
+        <input id="type-input" type="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="여기에 따라 입력">
+        <div id="type-bonus">보너스: 0개</div>
+      </div>
     </div>
   </div>
 
   <div id="screen-result" class="screen">
     <h1>지각이다...! 😱</h1>
     <p id="result-time">생존 시간: 0.0초</p>
+    <p id="result-bonus"></p>
     <p id="result-grade">등급: -</p>
     <button id="btn-restart" class="btn-primary">다시 출근하기</button>
   </div>
@@ -202,7 +254,12 @@
   var btnStart = document.getElementById('btn-start');
   var btnRestart = document.getElementById('btn-restart');
   var btnHard = document.getElementById('btn-hard');
-  var tauntBanner = document.getElementById('taunt-banner');
+  var appEl = document.getElementById('app');
+  var typePanel = document.getElementById('type-panel');
+  var typePhrase = document.getElementById('type-phrase');
+  var typeInput = document.getElementById('type-input');
+  var typeBonusLabel = document.getElementById('type-bonus');
+  var resultBonus = document.getElementById('result-bonus');
 
   var gameArea = document.getElementById('game-area');
   var player = document.getElementById('player');
@@ -230,16 +287,18 @@
   var obstacles = []; // { el, x, y, speed }
 
   var hardMode = false;
-  var tauntTimerId = null;
-  var TAUNTS = [
-    '어, 벌써 숨차? 😏',
-    '민첩한 하루, 아직 멀었어',
-    '장애물이 더 궁금해할걸',
-    '지각은 선택지에 없어',
-    '속도 올라간다, 각오해',
-    '이 정도는 그냥 산책이지?',
-    '눈 깜빡하면 지각이다',
-    '민첩함은 자랑이 아니라 생존'
+  var typingBonus = 0;
+  var currentPhrase = '';
+  var TYPING_BONUS_SECONDS = 5;
+  var PHRASES = [
+    '민첩한하루',
+    '저리꺼지렴',
+    '쟈철은내꺼',
+    '지각은안돼',
+    '빨리빨리와',
+    '피하면이겨',
+    '커피는내꺼',
+    '눈치껏피해'
   ];
 
   function showScreen(screen) {
@@ -275,18 +334,55 @@
     lastFrameTime = startTime;
     rafId = requestAnimationFrame(gameLoop);
 
+    appEl.classList.toggle('wide', hardMode);
     if (hardMode) {
-      tauntBanner.classList.add('show');
-      updateTaunt();
-      tauntTimerId = setInterval(updateTaunt, 3200);
+      typePanel.classList.add('show');
+      typingBonus = 0;
+      typeBonusLabel.textContent = '보너스: 0개';
+      nextPhrase();
+      typeInput.value = '';
+      typeInput.disabled = false;
+      setTimeout(function () { typeInput.focus(); }, 0);
     } else {
-      tauntBanner.classList.remove('show');
-      tauntBanner.textContent = '';
+      typePanel.classList.remove('show');
+      typeInput.value = '';
+      typeInput.disabled = true;
     }
   }
 
-  function updateTaunt() {
-    tauntBanner.textContent = TAUNTS[Math.floor(Math.random() * TAUNTS.length)];
+  function nextPhrase() {
+    currentPhrase = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+    typeInput.value = '';
+    renderPhrase();
+  }
+
+  function renderPhrase() {
+    var value = typeInput.value;
+    var html = '';
+    var mismatchAt = -1;
+    for (var i = 0; i < currentPhrase.length; i++) {
+      var ch = currentPhrase.charAt(i);
+      if (mismatchAt === -1 && i < value.length) {
+        if (value.charAt(i) === ch) {
+          html += '<span class="done">' + ch + '</span>';
+        } else {
+          mismatchAt = i;
+          html += '<span class="bad">' + ch + '</span>';
+        }
+      } else {
+        html += ch;
+      }
+    }
+    typePhrase.innerHTML = html;
+  }
+
+  function onTypeInput() {
+    renderPhrase();
+    if (typeInput.value === currentPhrase) {
+      typingBonus++;
+      typeBonusLabel.textContent = '보너스: ' + typingBonus + '개';
+      nextPhrase();
+    }
   }
 
   function getDifficulty() {
@@ -393,11 +489,11 @@
     rafId = requestAnimationFrame(gameLoop);
   }
 
-  function getGradeInfo(seconds) {
-    if (seconds >= 60) return { letter: 'S', label: '전설의 출근러!' };
-    if (seconds >= 40) return { letter: 'A', label: '민첩왕!' };
-    if (seconds >= 25) return { letter: 'B', label: '센스 있는 하루' };
-    if (seconds >= 12) return { letter: 'C', label: '평범한 하루' };
+  function getGradeInfo(score) {
+    if (score >= 60) return { letter: 'S', label: '전설의 출근러!' };
+    if (score >= 40) return { letter: 'A', label: '민첩왕!' };
+    if (score >= 25) return { letter: 'B', label: '센스 있는 하루' };
+    if (score >= 12) return { letter: 'C', label: '평범한 하루' };
     return { letter: 'D', label: '오늘은 좀 쉬어야...' };
   }
 
@@ -409,39 +505,42 @@
     }
     keys.left = false;
     keys.right = false;
+    typeInput.disabled = true;
 
-    if (tauntTimerId !== null) {
-      clearInterval(tauntTimerId);
-      tauntTimerId = null;
-    }
+    var bonusSeconds = typingBonus * TYPING_BONUS_SECONDS;
+    var totalScore = elapsed + bonusSeconds;
+    var grade = getGradeInfo(totalScore);
 
-    var grade = getGradeInfo(elapsed);
     resultTime.textContent = '생존 시간: ' + elapsed.toFixed(1) + '초';
+    resultBonus.textContent = hardMode ? ('타이핑 보너스: ' + typingBonus + '개 (+' + bonusSeconds + '초)') : '';
     resultGrade.textContent = '등급: ' + grade.letter + ' (' + grade.label + ')';
 
     showScreen(screenResult);
   }
 
   function onKeyDown(e) {
-    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+    var altKeysEnabled = !hardMode;
+    if (e.key === 'ArrowLeft' || (altKeysEnabled && (e.key === 'a' || e.key === 'A'))) {
       keys.left = true;
       e.preventDefault();
-    } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+    } else if (e.key === 'ArrowRight' || (altKeysEnabled && (e.key === 'd' || e.key === 'D'))) {
       keys.right = true;
       e.preventDefault();
     }
   }
 
   function onKeyUp(e) {
-    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+    var altKeysEnabled = !hardMode;
+    if (e.key === 'ArrowLeft' || (altKeysEnabled && (e.key === 'a' || e.key === 'A'))) {
       keys.left = false;
-    } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+    } else if (e.key === 'ArrowRight' || (altKeysEnabled && (e.key === 'd' || e.key === 'D'))) {
       keys.right = false;
     }
   }
 
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('keyup', onKeyUp);
+  typeInput.addEventListener('input', onTypeInput);
   window.addEventListener('blur', function () {
     keys.left = false;
     keys.right = false;
