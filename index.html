@@ -1,76 +1,358 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>KING 해커톤 · 배포 확인</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #eef1eb; color: #17241c; font-family: system-ui, "Malgun Gothic", sans-serif; }
-    main { width: min(100%, 720px); padding: clamp(24px, 5vw, 48px); border: 1px solid #00462a; border-radius: 8px; background: white; }
-    .label { margin: 0 0 24px; color: #00462a; font-size: 14px; font-weight: 700; }
-    h1 { margin: 0 0 16px; font-size: clamp(28px, 6vw, 42px); }
-    p { line-height: 1.7; }
-    #stage { display: grid; place-items: center; min-height: 180px; margin: 28px 0 20px; padding: 24px; background: #f3f5f1; border: 1px solid #d8ded7; text-align: center; }
-    #message { margin: 0; }
-    .buttons { display: flex; flex-wrap: wrap; gap: 12px; }
-    button { padding: 12px 20px; border: 1px solid #00462a; border-radius: 4px; background: #00462a; color: white; font: inherit; cursor: pointer; }
-    #restart { background: white; color: #00462a; }
-    button:disabled { opacity: .4; cursor: default; }
-    button:focus-visible { outline: 3px solid #69a58c; outline-offset: 4px; }
-    .guide { margin-top: 28px; padding: 24px; border: 1px solid #d8ded7; background: #f8faf6; }
-    .guide h2 { margin: 0 0 12px; font-size: 22px; }
-    .guide li { margin: 10px 0; line-height: 1.7; }
-    .sheet-link { display: inline-block; margin-top: 8px; padding: 12px 18px; background: #00462a; color: white; border-radius: 4px; text-decoration: none; }
-    .sheet-link:focus-visible { outline: 3px solid #69a58c; outline-offset: 4px; }
-    .note { margin-top: 28px; padding-top: 20px; border-top: 1px solid #d8ded7; color: #68746b; font-size: 14px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>출근길 민첩 질주</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #8ecae6 0%, #bde0fe 60%, #ffe8d6 100%);
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    color: #22223b;
+  }
+
+  #app {
+    width: min(480px, 92vw);
+    text-align: center;
+  }
+
+  .screen { display: none; flex-direction: column; align-items: center; gap: 14px; }
+  .screen.active { display: flex; }
+
+  h1 { margin: 0; font-size: 1.6rem; }
+  .subtitle { margin: 0; opacity: 0.8; font-size: 0.95rem; }
+
+  .info-box {
+    background: rgba(255,255,255,0.7);
+    border-radius: 12px;
+    padding: 14px 18px;
+    text-align: left;
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  .btn-primary {
+    background: #fb8500;
+    color: white;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 28px;
+    font-size: 1.05rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  }
+  .btn-primary:active { transform: scale(0.97); }
+
+  #hud {
+    width: min(480px, 92vw);
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.95rem;
+    font-weight: bold;
+    padding: 0 4px;
+  }
+
+  #game-area {
+    position: relative;
+    width: min(480px, 92vw);
+    height: min(560px, 68vh);
+    background: linear-gradient(180deg, #a2d2ff 0%, #ffffff 100%);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 3px solid #22223b;
+  }
+
+  #player {
+    position: absolute;
+    bottom: 10px;
+    width: 48px;
+    height: 48px;
+    font-size: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .obstacle {
+    position: absolute;
+    width: 42px;
+    height: 42px;
+    font-size: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #result-time { font-size: 1.1rem; }
+  #result-grade { font-size: 1.4rem; font-weight: bold; }
+</style>
 </head>
 <body>
-  <main>
-    <p class="label">KING · 바이브코딩 해커톤</p>
-    <!-- 사전 수정 연습: 아래 제목을 원하는 문구로 바꿔 보세요. -->
-    <h1>해커톤 준비 완료</h1>
-    <p>이 화면이 GitHub Pages 공개 주소에서 보이면 배포에 성공한 것입니다.<br>시작 버튼을 눌러 기본 동작도 확인해 주세요.</p>
-    <section id="stage" aria-label="실행 확인 화면" aria-live="polite">
-      <p id="message">시작 버튼을 눌러 주세요.</p>
-    </section>
-    <div class="buttons">
-      <button id="start" type="button">시작</button>
-      <button id="restart" type="button" disabled>다시 시작</button>
+<div id="app">
+
+  <div id="screen-start" class="screen active">
+    <h1>출근길 민첩 질주 🏃💨</h1>
+    <p class="subtitle">민첩한 하루 되세요!</p>
+    <div class="info-box">
+      <p><strong>조작</strong>: ← → (또는 A / D) 키로 좌우 이동</p>
+      <p><strong>목표</strong>: 쏟아지는 출근길 장애물을 피해 최대한 오래 생존하기</p>
+      <p>시간이 지날수록 장애물이 더 빠르고 많아져요. 민첩하게!</p>
     </div>
-    <section class="guide" aria-labelledby="guide-title">
-      <h2 id="guide-title">참가자 정보 사전 입력</h2>
-      <p>정기 모임 전에 GitHub와 Skeam 계정을 만들고, 아래 스프레드시트에 본인 정보를 미리 기재해 주세요.</p>
-      <ol>
-        <li><strong>GitHub 계정:</strong> 계정을 생성하고 이메일 인증을 완료합니다. 공개 저장소를 만들고 이 파일을 GitHub Pages에 배포해 봅니다.</li>
-        <li><strong>Skeam 계정:</strong> 계정을 생성하고 행사에 사용할 기기에서 로그인을 확인합니다.</li>
-        <li><strong>스프레드시트:</strong> 빈 행 하나에 이름, Skeam 닉네임, 참여 여부, 사용할 AI·제작 도구를 입력합니다. 이미 본인 행이 있다면 해당 행을 수정합니다.</li>
-        <li><strong>행사 후 입력:</strong> 작품명과 Skeam 링크를 입력합니다. 아직 만들지 않은 작품 정보와 링크는 비워 두어도 됩니다.</li>
-      </ol>
-      <a class="sheet-link" href="https://docs.google.com/spreadsheets/d/1eLqrOtpMhR3VfCOIV-9_RNtlB1wUtHm_m6aK4ziDUH8/edit?usp=sharing" target="_blank" rel="noopener noreferrer">참가자 정보 입력 시트 열기 ↗</a>
-      <p style="font-size:14px;color:#68746b">다른 참가자의 행은 수정하지 마세요. 비밀번호·API 키는 기재하지 않습니다. 사전 준비·출석·제출 상태·실행 확인은 운영진이 관리합니다.</p>
-    </section>
-    <p class="note">이 파일은 배포 연습용 기본 틀입니다. 실제 게임 규칙과 조작은 당일 추가하세요.<br>사전 연습: 제목을 수정해 다시 올린 뒤 공개 페이지에도 반영되는지 확인합니다.</p>
-  </main>
-  <script>
-    // 외부 라이브러리 없이 이 파일 하나로 실행됩니다.
-    const message = document.getElementById('message');
-    const start = document.getElementById('start');
-    const restart = document.getElementById('restart');
-    start.addEventListener('click', () => {
-      message.textContent = '시작 버튼이 정상적으로 작동합니다. 다시 시작 버튼도 확인해 주세요.';
-      start.disabled = true;
-      restart.disabled = false;
-      restart.focus();
+    <button id="btn-start" class="btn-primary">출근 시작!</button>
+  </div>
+
+  <div id="screen-game" class="screen">
+    <div id="hud">
+      <span id="hud-time">0.0초</span>
+      <span id="hud-level">난이도 1</span>
+    </div>
+    <div id="game-area">
+      <div id="player">🏃</div>
+    </div>
+  </div>
+
+  <div id="screen-result" class="screen">
+    <h1>지각이다...! 😱</h1>
+    <p id="result-time">생존 시간: 0.0초</p>
+    <p id="result-grade">등급: -</p>
+    <button id="btn-restart" class="btn-primary">다시 출근하기</button>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var screenStart = document.getElementById('screen-start');
+  var screenGame = document.getElementById('screen-game');
+  var screenResult = document.getElementById('screen-result');
+
+  var btnStart = document.getElementById('btn-start');
+  var btnRestart = document.getElementById('btn-restart');
+
+  var gameArea = document.getElementById('game-area');
+  var player = document.getElementById('player');
+
+  var hudTime = document.getElementById('hud-time');
+  var hudLevel = document.getElementById('hud-level');
+
+  var resultTime = document.getElementById('result-time');
+  var resultGrade = document.getElementById('result-grade');
+
+  var OBSTACLE_EMOJIS = ['⏰', '🚧', '☕', '📉', '🗑️', '🚗'];
+  var PLAYER_SIZE = 48;
+  var OBSTACLE_SIZE = 42;
+  var PLAYER_SPEED = 320; // px/sec
+
+  var keys = { left: false, right: false };
+
+  var isRunning = false;
+  var rafId = null;
+  var startTime = 0;
+  var lastFrameTime = 0;
+  var elapsed = 0;
+  var spawnAccumulator = 0;
+  var playerX = 0;
+  var obstacles = []; // { el, x, y, speed }
+
+  function showScreen(screen) {
+    [screenStart, screenGame, screenResult].forEach(function (s) {
+      s.classList.remove('active');
     });
-    restart.addEventListener('click', () => {
-      message.textContent = '시작 버튼을 눌러 주세요.';
-      start.disabled = false;
-      restart.disabled = true;
-      start.focus();
-    });
-  </script>
+    screen.classList.add('active');
+  }
+
+  function clearObstacles() {
+    for (var i = 0; i < obstacles.length; i++) {
+      obstacles[i].el.remove();
+    }
+    obstacles = [];
+  }
+
+  function resetState() {
+    clearObstacles();
+    elapsed = 0;
+    spawnAccumulator = 0;
+    var areaWidth = gameArea.clientWidth;
+    playerX = (areaWidth - PLAYER_SIZE) / 2;
+    player.style.left = playerX + 'px';
+    hudTime.textContent = '0.0초';
+    hudLevel.textContent = '난이도 1';
+  }
+
+  function startGame() {
+    showScreen(screenGame);
+    resetState();
+    isRunning = true;
+    startTime = performance.now();
+    lastFrameTime = startTime;
+    rafId = requestAnimationFrame(gameLoop);
+  }
+
+  function getDifficulty() {
+    // 0 at start, grows over time, capped
+    return Math.min(elapsed / 12, 6);
+  }
+
+  function spawnObstacle() {
+    var areaWidth = gameArea.clientWidth;
+    var x = Math.random() * (areaWidth - OBSTACLE_SIZE);
+    var emoji = OBSTACLE_EMOJIS[Math.floor(Math.random() * OBSTACLE_EMOJIS.length)];
+    var el = document.createElement('div');
+    el.className = 'obstacle';
+    el.textContent = emoji;
+    el.style.left = x + 'px';
+    el.style.top = '-' + OBSTACLE_SIZE + 'px';
+    gameArea.appendChild(el);
+
+    var difficulty = getDifficulty();
+    var speed = 140 + difficulty * 45 + Math.random() * 40; // px/sec
+
+    obstacles.push({ el: el, x: x, y: -OBSTACLE_SIZE, speed: speed });
+  }
+
+  function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+    return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+  }
+
+  function gameLoop(now) {
+    if (!isRunning) return;
+
+    var dt = (now - lastFrameTime) / 1000;
+    lastFrameTime = now;
+    elapsed = (now - startTime) / 1000;
+
+    var areaWidth = gameArea.clientWidth;
+    var areaHeight = gameArea.clientHeight;
+
+    // move player
+    var dx = 0;
+    if (keys.left) dx -= PLAYER_SPEED * dt;
+    if (keys.right) dx += PLAYER_SPEED * dt;
+    playerX = Math.max(0, Math.min(areaWidth - PLAYER_SIZE, playerX + dx));
+    player.style.left = playerX + 'px';
+
+    // spawn obstacles, interval shrinks as difficulty rises
+    var difficulty = getDifficulty();
+    var spawnInterval = Math.max(0.38, 1.1 - difficulty * 0.12);
+    spawnAccumulator += dt;
+    if (spawnAccumulator >= spawnInterval) {
+      spawnAccumulator = 0;
+      spawnObstacle();
+    }
+
+    // player hitbox, slightly shrunk for fairness
+    var playerPad = 8;
+    var playerRect = {
+      x: playerX + playerPad,
+      y: areaHeight - PLAYER_SIZE - 10 + playerPad,
+      w: PLAYER_SIZE - playerPad * 2,
+      h: PLAYER_SIZE - playerPad * 2
+    };
+
+    var hit = false;
+    for (var i = obstacles.length - 1; i >= 0; i--) {
+      var o = obstacles[i];
+      o.y += o.speed * dt;
+      o.el.style.top = o.y + 'px';
+
+      if (o.y > areaHeight) {
+        o.el.remove();
+        obstacles.splice(i, 1);
+        continue;
+      }
+
+      var obstaclePad = 6;
+      var obstacleRect = {
+        x: o.x + obstaclePad,
+        y: o.y + obstaclePad,
+        w: OBSTACLE_SIZE - obstaclePad * 2,
+        h: OBSTACLE_SIZE - obstaclePad * 2
+      };
+
+      if (rectsOverlap(
+        playerRect.x, playerRect.y, playerRect.w, playerRect.h,
+        obstacleRect.x, obstacleRect.y, obstacleRect.w, obstacleRect.h
+      )) {
+        hit = true;
+      }
+    }
+
+    hudTime.textContent = elapsed.toFixed(1) + '초';
+    hudLevel.textContent = '난이도 ' + (1 + Math.floor(difficulty));
+
+    if (hit) {
+      endGame();
+      return;
+    }
+
+    rafId = requestAnimationFrame(gameLoop);
+  }
+
+  function getGradeInfo(seconds) {
+    if (seconds >= 60) return { letter: 'S', label: '전설의 출근러!' };
+    if (seconds >= 40) return { letter: 'A', label: '민첩왕!' };
+    if (seconds >= 25) return { letter: 'B', label: '센스 있는 하루' };
+    if (seconds >= 12) return { letter: 'C', label: '평범한 하루' };
+    return { letter: 'D', label: '오늘은 좀 쉬어야...' };
+  }
+
+  function endGame() {
+    isRunning = false;
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    keys.left = false;
+    keys.right = false;
+
+    var grade = getGradeInfo(elapsed);
+    resultTime.textContent = '생존 시간: ' + elapsed.toFixed(1) + '초';
+    resultGrade.textContent = '등급: ' + grade.letter + ' (' + grade.label + ')';
+
+    showScreen(screenResult);
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+      keys.left = true;
+      e.preventDefault();
+    } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+      keys.right = true;
+      e.preventDefault();
+    }
+  }
+
+  function onKeyUp(e) {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+      keys.left = false;
+    } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+      keys.right = false;
+    }
+  }
+
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+
+  btnStart.addEventListener('click', function () {
+    if (isRunning) return;
+    startGame();
+  });
+
+  btnRestart.addEventListener('click', function () {
+    if (isRunning) return;
+    startGame();
+  });
+
+})();
+</script>
 </body>
 </html>
-
