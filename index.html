@@ -198,6 +198,16 @@
   #result-time { font-size: 1.1rem; }
   #result-grade { font-size: 1.4rem; font-weight: bold; }
 
+  #result-char { font-size: 3.5rem; line-height: 1; }
+  #result-char img {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+  }
+
   #result-rabbits {
     font-size: 1.6rem;
     display: flex;
@@ -225,6 +235,7 @@
       <p><strong>조작</strong>: ← → 키로 좌우 이동</p>
       <p><strong>목표</strong>: 장애물을 피하면서 옆 패널의 5글자 문구도 동시에 타이핑하기</p>
       <p>장애물만 피해도 생존 시간이 쌓이고, 문구를 완성할 때마다 보너스 점수가 붙어요.</p>
+      <p>✨ <strong>초레어템</strong>이 가끔 떨어져요. 이건 피하지 말고 <strong>맞혀야</strong> 해요!</p>
       <p>시간이 지날수록 장애물이 더 빠르고 많아져요. 민첩하게!</p>
     </div>
     <button id="btn-start" class="btn-primary">출근 시작!</button>
@@ -250,6 +261,7 @@
 
   <div id="screen-result" class="screen">
     <h1 id="result-title">지각이다...! 😱</h1>
+    <div id="result-char"></div>
     <p id="result-time">생존 시간: 0.0초</p>
     <p id="result-bonus"></p>
     <p id="result-grade">등급: -</p>
@@ -275,6 +287,7 @@
   var typeBonusLabel = document.getElementById('type-bonus');
   var resultBonus = document.getElementById('result-bonus');
   var resultRabbits = document.getElementById('result-rabbits');
+  var resultChar = document.getElementById('result-char');
 
   var gameArea = document.getElementById('game-area');
   var player = document.getElementById('player');
@@ -315,12 +328,7 @@
     probe.src = 'images/rare.png';
   })();
   var rareCatches = 0;
-  var rareAccumulator = 0;
-  var rareInterval = randomRareInterval();
-
-  function randomRareInterval() {
-    return 6 + Math.random() * 5;
-  }
+  var lastRareLevel = 0; // 레벨(난이도)이 바뀔 때마다 최소 1개 보장
 
   var keys = { left: false, right: false };
 
@@ -386,8 +394,7 @@
     elapsed = 0;
     spawnAccumulator = 0;
     rareCatches = 0;
-    rareAccumulator = 0;
-    rareInterval = randomRareInterval();
+    lastRareLevel = 0;
     var areaWidth = gameArea.clientWidth;
     playerX = (areaWidth - PLAYER_SIZE) / 2;
     player.style.left = playerX + 'px';
@@ -543,11 +550,10 @@
       spawnObstacle();
     }
 
-    // 초레어템은 따로, 더 뜸하게 스폰
-    rareAccumulator += dt;
-    if (rareAccumulator >= rareInterval) {
-      rareAccumulator = 0;
-      rareInterval = randomRareInterval();
+    // 초레어템: 난이도(레벨)가 바뀔 때마다 최소 1개 보장
+    var level = 1 + Math.floor(difficulty);
+    if (level > lastRareLevel) {
+      lastRareLevel = level;
       spawnRareItem();
     }
 
@@ -594,7 +600,6 @@
       }
     }
 
-    var level = 1 + Math.floor(difficulty);
     hudTime.textContent = elapsed.toFixed(1) + '초';
     hudLevel.textContent = '난이도 ' + level;
     applySkyForLevel(level);
@@ -634,6 +639,7 @@
     resultBonus.textContent = '타이핑 보너스: ' + typingBonus + '개 (+' + bonusSeconds + '초)';
     resultGrade.textContent = '등급: ' + grade.letter + ' (' + grade.label + ')';
     resultRabbits.innerHTML = rareCatches > 0 ? buildRabbitRowHtml() : '';
+    resultChar.innerHTML = buildResultCharHtml(totalScore);
 
     showScreen(screenResult);
   }
@@ -647,6 +653,20 @@
       html += rabbitHtml;
     }
     return html;
+  }
+
+  function buildResultCharHtml(score) {
+    if (score >= 40) { // A 이상: 잘했으니 레어템 사진
+      if (rareImageSrc) return '<img src="' + rareImageSrc + '" alt="rare">';
+      return '<span>' + RARE_EMOJI_FALLBACK + '</span>';
+    }
+    // A 미만: 올려주신 장애물 사진 중 랜덤
+    var uploadedImages = obstaclePool.filter(function (item) { return item.type === 'image'; });
+    if (uploadedImages.length > 0) {
+      var pick = uploadedImages[Math.floor(Math.random() * uploadedImages.length)];
+      return '<img src="' + pick.src + '" alt="obstacle">';
+    }
+    return '<span>😅</span>';
   }
 
   function onKeyDown(e) {
