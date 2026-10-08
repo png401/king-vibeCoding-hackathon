@@ -174,6 +174,12 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   }
 
+  .rare-item {
+    animation: rare-wobble 0.5s infinite alternate;
+    box-shadow: 0 0 10px 3px gold;
+    border-radius: 50%;
+  }
+
   @keyframes run-bounce {
     from { transform: translateY(0) rotate(-4deg); }
     to { transform: translateY(-5px) rotate(4deg); }
@@ -184,8 +190,29 @@
     to { transform: rotate(8deg); }
   }
 
+  @keyframes rare-wobble {
+    from { transform: scale(1) rotate(-6deg); }
+    to { transform: scale(1.12) rotate(6deg); }
+  }
+
   #result-time { font-size: 1.1rem; }
   #result-grade { font-size: 1.4rem; font-weight: bold; }
+
+  #result-rabbits {
+    font-size: 1.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  #result-rabbits img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+  }
 </style>
 </head>
 <body>
@@ -226,6 +253,7 @@
     <p id="result-time">생존 시간: 0.0초</p>
     <p id="result-bonus"></p>
     <p id="result-grade">등급: -</p>
+    <div id="result-rabbits"></div>
     <button id="btn-restart" class="btn-primary">다시 출근하기</button>
   </div>
 
@@ -246,6 +274,7 @@
   var typeInput = document.getElementById('type-input');
   var typeBonusLabel = document.getElementById('type-bonus');
   var resultBonus = document.getElementById('result-bonus');
+  var resultRabbits = document.getElementById('result-rabbits');
 
   var gameArea = document.getElementById('game-area');
   var player = document.getElementById('player');
@@ -275,6 +304,22 @@
       };
       probe.src = path;
     })('images/obstacle' + imgIdx + '.png');
+  }
+
+  // 초레어템: images/rare.png 를 올리면 자동 사용, 없으면 이모지로 대체
+  var RARE_EMOJI_FALLBACK = '🐰';
+  var rareImageSrc = null;
+  (function () {
+    var probe = new Image();
+    probe.onload = function () { rareImageSrc = 'images/rare.png'; };
+    probe.src = 'images/rare.png';
+  })();
+  var rareCatches = 0;
+  var rareAccumulator = 0;
+  var rareInterval = randomRareInterval();
+
+  function randomRareInterval() {
+    return 6 + Math.random() * 5;
   }
 
   var keys = { left: false, right: false };
@@ -340,6 +385,9 @@
     clearObstacles();
     elapsed = 0;
     spawnAccumulator = 0;
+    rareCatches = 0;
+    rareAccumulator = 0;
+    rareInterval = randomRareInterval();
     var areaWidth = gameArea.clientWidth;
     playerX = (areaWidth - PLAYER_SIZE) / 2;
     player.style.left = playerX + 'px';
@@ -436,7 +484,33 @@
     var difficulty = getDifficulty();
     var speed = 140 + difficulty * 45 + Math.random() * 40; // px/sec
 
-    obstacles.push({ el: el, x: x, y: -OBSTACLE_SIZE, speed: speed });
+    obstacles.push({ el: el, x: x, y: -OBSTACLE_SIZE, speed: speed, size: OBSTACLE_SIZE, kind: 'hazard' });
+  }
+
+  function spawnRareItem() {
+    var size = OBSTACLE_SIZE + 10;
+    var areaWidth = gameArea.clientWidth;
+    var x = Math.random() * (areaWidth - size);
+    var el = document.createElement('div');
+    el.className = 'obstacle rare-item';
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    if (rareImageSrc) {
+      var img = document.createElement('img');
+      img.src = rareImageSrc;
+      el.appendChild(img);
+    } else {
+      el.textContent = RARE_EMOJI_FALLBACK;
+      el.style.fontSize = (size - 14) + 'px';
+    }
+    el.style.left = x + 'px';
+    el.style.top = '-' + size + 'px';
+    gameArea.appendChild(el);
+
+    var difficulty = getDifficulty();
+    var speed = 120 + difficulty * 35 + Math.random() * 30; // px/sec, 하자드보다 살짝 느리게
+
+    obstacles.push({ el: el, x: x, y: -size, speed: speed, size: size, kind: 'rare' });
   }
 
   function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
@@ -469,6 +543,14 @@
       spawnObstacle();
     }
 
+    // 초레어템은 따로, 더 뜸하게 스폰
+    rareAccumulator += dt;
+    if (rareAccumulator >= rareInterval) {
+      rareAccumulator = 0;
+      rareInterval = randomRareInterval();
+      spawnRareItem();
+    }
+
     // player hitbox, slightly shrunk for fairness
     var playerPad = 8;
     var playerRect = {
@@ -494,15 +576,21 @@
       var obstacleRect = {
         x: o.x + obstaclePad,
         y: o.y + obstaclePad,
-        w: OBSTACLE_SIZE - obstaclePad * 2,
-        h: OBSTACLE_SIZE - obstaclePad * 2
+        w: o.size - obstaclePad * 2,
+        h: o.size - obstaclePad * 2
       };
 
       if (rectsOverlap(
         playerRect.x, playerRect.y, playerRect.w, playerRect.h,
         obstacleRect.x, obstacleRect.y, obstacleRect.w, obstacleRect.h
       )) {
-        hit = true;
+        if (o.kind === 'rare') {
+          rareCatches++;
+          o.el.remove();
+          obstacles.splice(i, 1);
+        } else {
+          hit = true;
+        }
       }
     }
 
@@ -545,8 +633,20 @@
     resultTime.textContent = '생존 시간: ' + elapsed.toFixed(1) + '초';
     resultBonus.textContent = '타이핑 보너스: ' + typingBonus + '개 (+' + bonusSeconds + '초)';
     resultGrade.textContent = '등급: ' + grade.letter + ' (' + grade.label + ')';
+    resultRabbits.innerHTML = rareCatches > 0 ? buildRabbitRowHtml() : '';
 
     showScreen(screenResult);
+  }
+
+  function buildRabbitRowHtml() {
+    var rabbitHtml = rareImageSrc
+      ? '<img src="' + rareImageSrc + '" alt="rabbit">'
+      : '<span>' + RARE_EMOJI_FALLBACK + '</span>';
+    var html = '<span>🏃</span>';
+    for (var i = 0; i < rareCatches; i++) {
+      html += rabbitHtml;
+    }
+    return html;
   }
 
   function onKeyDown(e) {
