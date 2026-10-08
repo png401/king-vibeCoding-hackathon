@@ -18,12 +18,8 @@
   }
 
   #app {
-    width: min(480px, 92vw);
-    text-align: center;
-    transition: width 0.2s;
-  }
-  #app.wide {
     width: min(760px, 95vw);
+    text-align: center;
   }
 
   .screen { display: none; flex-direction: column; align-items: center; gap: 14px; }
@@ -53,23 +49,6 @@
     box-shadow: 0 4px 10px rgba(0,0,0,0.15);
   }
   .btn-primary:active { transform: scale(0.97); }
-
-  .btn-secondary {
-    background: rgba(255,255,255,0.75);
-    color: #22223b;
-    border: 2px solid #22223b;
-    border-radius: 999px;
-    padding: 9px 20px;
-    font-size: 0.92rem;
-    font-weight: bold;
-    cursor: pointer;
-  }
-  .btn-secondary.active {
-    background: #e63946;
-    color: white;
-    border-color: #e63946;
-  }
-  .btn-secondary:active { transform: scale(0.97); }
 
   #hud {
     width: min(480px, 92vw);
@@ -207,13 +186,12 @@
     <h1>출근길 민첩 질주 🏃💨</h1>
     <p class="subtitle">민첩한 하루 되세요!</p>
     <div class="info-box">
-      <p><strong>조작</strong>: ← → (또는 A / D) 키로 좌우 이동</p>
-      <p><strong>목표</strong>: 쏟아지는 출근길 장애물을 피해 최대한 오래 생존하기</p>
+      <p><strong>조작</strong>: ← → 키로 좌우 이동</p>
+      <p><strong>목표</strong>: 장애물을 피하면서 옆 패널의 5글자 문구도 동시에 타이핑하기</p>
+      <p>장애물만 피해도 생존 시간이 쌓이고, 문구를 완성할 때마다 보너스 점수가 붙어요.</p>
       <p>시간이 지날수록 장애물이 더 빠르고 많아져요. 민첩하게!</p>
-      <p>하드모드를 켜면 옆에 <strong>타이핑 챌린지</strong>가 떠요. 피하면서 문장도 같이 치면 보너스 점수!</p>
     </div>
     <button id="btn-start" class="btn-primary">출근 시작!</button>
-    <button id="btn-hard" class="btn-secondary">너무 쉬워요 😏</button>
   </div>
 
   <div id="screen-game" class="screen">
@@ -254,8 +232,6 @@
 
   var btnStart = document.getElementById('btn-start');
   var btnRestart = document.getElementById('btn-restart');
-  var btnHard = document.getElementById('btn-hard');
-  var appEl = document.getElementById('app');
   var typePanel = document.getElementById('type-panel');
   var typePhrase = document.getElementById('type-phrase');
   var typeInput = document.getElementById('type-input');
@@ -287,7 +263,6 @@
   var playerX = 0;
   var obstacles = []; // { el, x, y, speed }
 
-  var hardMode = false;
   var typingBonus = 0;
   var currentPhrase = '';
   var TYPING_BONUS_SECONDS = 5;
@@ -358,20 +333,13 @@
     lastFrameTime = startTime;
     rafId = requestAnimationFrame(gameLoop);
 
-    appEl.classList.toggle('wide', hardMode);
-    if (hardMode) {
-      typePanel.classList.add('show');
-      typingBonus = 0;
-      typeBonusLabel.textContent = '보너스: 0개';
-      nextPhrase();
-      typeInput.value = '';
-      typeInput.disabled = false;
-      setTimeout(function () { typeInput.focus(); }, 0);
-    } else {
-      typePanel.classList.remove('show');
-      typeInput.value = '';
-      typeInput.disabled = true;
-    }
+    typePanel.classList.add('show');
+    typingBonus = 0;
+    typeBonusLabel.textContent = '보너스: 0개';
+    nextPhrase();
+    typeInput.value = '';
+    typeInput.disabled = false;
+    setTimeout(function () { typeInput.focus(); }, 0);
   }
 
   function nextPhrase() {
@@ -421,10 +389,7 @@
 
   function getDifficulty() {
     // 0 at start, grows over time, capped
-    if (hardMode) {
-      return Math.min(1.5 + elapsed / 7, 9);
-    }
-    return Math.min(elapsed / 12, 6);
+    return Math.min(1.5 + elapsed / 7, 9);
   }
 
   function spawnObstacle() {
@@ -467,8 +432,7 @@
 
     // spawn obstacles, interval shrinks as difficulty rises
     var difficulty = getDifficulty();
-    var minInterval = hardMode ? 0.24 : 0.38;
-    var spawnInterval = Math.max(minInterval, 1.1 - difficulty * 0.12);
+    var spawnInterval = Math.max(0.24, 1.1 - difficulty * 0.12);
     spawnAccumulator += dt;
     if (spawnAccumulator >= spawnInterval) {
       spawnAccumulator = 0;
@@ -548,28 +512,26 @@
     var grade = getGradeInfo(totalScore);
 
     resultTime.textContent = '생존 시간: ' + elapsed.toFixed(1) + '초';
-    resultBonus.textContent = hardMode ? ('타이핑 보너스: ' + typingBonus + '개 (+' + bonusSeconds + '초)') : '';
+    resultBonus.textContent = '타이핑 보너스: ' + typingBonus + '개 (+' + bonusSeconds + '초)';
     resultGrade.textContent = '등급: ' + grade.letter + ' (' + grade.label + ')';
 
     showScreen(screenResult);
   }
 
   function onKeyDown(e) {
-    var altKeysEnabled = !hardMode;
-    if (e.key === 'ArrowLeft' || (altKeysEnabled && (e.key === 'a' || e.key === 'A'))) {
+    if (e.key === 'ArrowLeft') {
       keys.left = true;
       e.preventDefault();
-    } else if (e.key === 'ArrowRight' || (altKeysEnabled && (e.key === 'd' || e.key === 'D'))) {
+    } else if (e.key === 'ArrowRight') {
       keys.right = true;
       e.preventDefault();
     }
   }
 
   function onKeyUp(e) {
-    var altKeysEnabled = !hardMode;
-    if (e.key === 'ArrowLeft' || (altKeysEnabled && (e.key === 'a' || e.key === 'A'))) {
+    if (e.key === 'ArrowLeft') {
       keys.left = false;
-    } else if (e.key === 'ArrowRight' || (altKeysEnabled && (e.key === 'd' || e.key === 'D'))) {
+    } else if (e.key === 'ArrowRight') {
       keys.right = false;
     }
   }
@@ -581,12 +543,6 @@
   window.addEventListener('blur', function () {
     keys.left = false;
     keys.right = false;
-  });
-
-  btnHard.addEventListener('click', function () {
-    hardMode = !hardMode;
-    btnHard.textContent = hardMode ? '하드모드 ON 🔥' : '너무 쉬워요 😏';
-    btnHard.classList.toggle('active', hardMode);
   });
 
   btnStart.addEventListener('click', function () {
