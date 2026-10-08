@@ -213,7 +213,7 @@
   </div>
 
   <div id="screen-result" class="screen">
-    <h1>지각이다...! 😱</h1>
+    <h1 id="result-title">지각이다...! 😱</h1>
     <p id="result-time">생존 시간: 0.0초</p>
     <p id="result-bonus"></p>
     <p id="result-grade">등급: -</p>
@@ -244,6 +244,7 @@
   var hudTime = document.getElementById('hud-time');
   var hudLevel = document.getElementById('hud-level');
 
+  var resultTitle = document.getElementById('result-title');
   var resultTime = document.getElementById('result-time');
   var resultGrade = document.getElementById('result-grade');
 
@@ -490,11 +491,11 @@
   }
 
   function getGradeInfo(score) {
-    if (score >= 60) return { letter: 'S', label: '전설의 출근러!' };
-    if (score >= 40) return { letter: 'A', label: '민첩왕!' };
-    if (score >= 25) return { letter: 'B', label: '센스 있는 하루' };
-    if (score >= 12) return { letter: 'C', label: '평범한 하루' };
-    return { letter: 'D', label: '오늘은 좀 쉬어야...' };
+    if (score >= 60) return { letter: 'S', label: '전설의 출근러!', title: '완벽한 출근! 👑' };
+    if (score >= 40) return { letter: 'A', label: '민첩왕!', title: '오늘 좀 치네? 😎' };
+    if (score >= 25) return { letter: 'B', label: '센스 있는 하루', title: '무난한 출근 🙂' };
+    if (score >= 12) return { letter: 'C', label: '평범한 하루', title: '그럭저럭... 😅' };
+    return { letter: 'D', label: '오늘은 좀 쉬어야...', title: '지각이다...! 😱' };
   }
 
   function endGame() {
@@ -511,6 +512,7 @@
     var totalScore = elapsed + bonusSeconds;
     var grade = getGradeInfo(totalScore);
 
+    resultTitle.textContent = grade.title;
     resultTime.textContent = '생존 시간: ' + elapsed.toFixed(1) + '초';
     resultBonus.textContent = '타이핑 보너스: ' + typingBonus + '개 (+' + bonusSeconds + '초)';
     resultGrade.textContent = '등급: ' + grade.letter + ' (' + grade.label + ')';
